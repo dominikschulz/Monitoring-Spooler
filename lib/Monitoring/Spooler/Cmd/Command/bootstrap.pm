@@ -37,22 +37,22 @@ Initializ a new installation
 =cut
 sub execute {
     my $self = shift;
-    
+
     my $sql = 'SELECT COUNT(*) FROM groups';
     my $sth = $self->dbh()->prepexec($sql);
     my $cnt = $sth->fetchrow_array();
-    
+
     if($cnt > 0) {
-	print "You can not use this command once there is already at least one group\n";
-	return;
+        print "You can not use this command once there is already at least one group\n";
+        return;
     }
-    
+
     $sql = 'INSERT INTO groups (name) VALUES (?)';
     $sth = $self->dbh()->prepexec($sql,$self->name());
     if($sth) {
-	print "Created new group '".$self->name()."'\n";
+        print "Created new group '".$self->name()."'\n";
     }
-    
+
     return 1;
 }
 

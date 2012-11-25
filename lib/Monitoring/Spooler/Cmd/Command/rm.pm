@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Cmd::Command::rm;
+# ABSTRACT: remove a single message
 
 use 5.010_000;
 use mro 'c3';
@@ -31,7 +32,7 @@ has 'message_id' => (
 # your code here ...
 sub execute {
     my $self = shift;
-    
+
     # remove a single message from the queue
     my $sql = 'DELETE FROM msg_queue WHERE id = ?';
     my $sth = $self->dbh()->prepare($sql);
@@ -64,11 +65,6 @@ __END__
 =head1 NAME
 
 Monitoring::Spooler::Cmd::Command::Rm - Remove messages from the queue
-
-=head1 SYNOPSIS
-
-    use Monitoring::Spooler::Cmd::Command::Rm;
-    my $Mod = Monitoring::Spooler::Cmd::Command::Rm::->new();
 
 =head1 DESCRIPTION
 

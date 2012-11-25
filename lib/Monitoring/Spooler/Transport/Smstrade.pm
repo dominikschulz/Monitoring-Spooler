@@ -67,7 +67,7 @@ sub _init_ua {
 
 sub _init_responses {
     my $self = shift;
-    
+
     # see http://www.smstrade.de/pdf/SMS-Gateway_HTTP_API_v2_de.pdf, page 5
     my $resp_ref = {
         '10'    => 'Destination Number not correct (Parameter: to)',
@@ -82,7 +82,7 @@ sub _init_responses {
         '80'    => 'Failed to submit to SMS-C. Use another route or contact support.',
         '100'   => 'SMS successfull submitted.',
     };
-    
+
     return $resp_ref;
 }
 
@@ -90,11 +90,11 @@ sub _init_responses {
 sub provides {
     my $self = shift;
     my $type = shift;
-    
+
     if($type =~ m/^text$/i) {
         return 1;
     }
-    
+
     return;
 }
 
@@ -102,10 +102,10 @@ sub run {
     my $self = shift;
     my $destination = shift;
     my $message = shift;
-    
+
     $destination = $self->_clean_number($destination);
     $message = substr($message,0,159);
-    
+
     my %args = (
         'key'       => $self->apikey(),
         'message'   => $message,
@@ -116,14 +116,14 @@ sub run {
         'message_id' => 1,
         'count'     => 1,
     );
-    
+
     my $content = join('&', map { uri_escape($_).'='.uri_escape($args{$_}) } keys %args);
-    
+
     my $req = HTTP::Request::->new( GET => $self->url().'?'.$content, );
     my $res = $self->_ua()->request($req);
-    
+
     $self->logger()->log( message => 'Requesting URL '.$self->url(), level => 'debug', );
-    
+
     if($res->is_success() && $res->content() =~ m/^100\D/) {
         $self->logger()->log( message => 'Sent '.$message.' to '.$destination, level => 'debug', );
         return 1;
@@ -146,6 +146,6 @@ __END__
 
 =head1 NAME
 
-Monitoring::Spooler::Transport::Smstrade - Some class ...
+Monitoring::Spooler::Transport::Smstrade - SMStrade transport
 
 =cut

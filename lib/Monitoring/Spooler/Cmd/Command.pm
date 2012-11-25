@@ -49,30 +49,30 @@ has '_dbh' => (
 # initializers ...
 sub _init_dbh {
     my $self = shift;
-    
+
     my $DBH = Monitoring::Spooler::DB::->new({
-	'config'	=> $self->config(),
-	'logger'	=> $self->logger(),
+        'config'        => $self->config(),
+        'logger'        => $self->logger(),
     });
-    
+
     return $DBH;
 }
 
 sub _init_config {
     my $self = shift;
-    
+
     my $Config = Config::Tree::->new({
-	'locations'	=> [qw(conf /etc/mon-spooler)],
+        'locations'     => [qw(conf /etc/mon-spooler)],
     });
-    
+
     return $Config;
 }
 
 sub _init_logger {
     my $self = shift;
-    
+
     my $Logger = Log::Tree::->new('mon-spooler');
-    
+
     return $Logger;
 }
 
@@ -88,18 +88,5 @@ __END__
 =head1 NAME
 
 Monitoring::Spooler::Cmd::Command - Base class for any command.
-
-=head1 SYNOPSIS
-
-    use Monitoring::Spooler::App;
-    my $Mod = Monitoring::Spooler::App::->new();
-
-=head1 DESCRIPTION
-
-Some description.
-
-=method _check_tables
-
-Create all necessary tables if they don't already exist.
 
 =cut

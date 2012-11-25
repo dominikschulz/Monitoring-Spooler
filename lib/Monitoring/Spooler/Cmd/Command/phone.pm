@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Cmd::Command::phone;
+# ABSTRACT: the voice transport
 
 use 5.010_000;
 use mro 'c3';
@@ -27,7 +28,7 @@ has 'iterations' => (
 # initializers ...
 sub _init_iterations {
     my $self = shift;
-    
+
     return $self->config()->get('Monitoring::Spooler::Phone::Iterations', { Default => 5, });
 }
 
@@ -36,7 +37,7 @@ sub _prepare_message_and_send {
     my $self = shift;
     my $group_id = shift;
     my $msg_ref = shift;
-    
+
     # get all users that ought to be notified
     my $sql = 'SELECT id, number FROM notify_order WHERE group_id = ? ORDER BY id';
     my $sth = $self->dbh()->prepare($sql);
@@ -53,15 +54,15 @@ sub _prepare_message_and_send {
         push(@numbers, { id => $id, number => $number });
     }
     $sth->finish();
-    
+
     if(!scalar(@numbers)) {
         $self->logger()->log( message => 'Got no numbers to notify!', level => 'error', );
         return;
     }
-    
+
     # just use the first supplied message
     my $message = $msg_ref->{$group_id}->[0]->{'msg'};
-       
+
     # five (default) iterations over the whole list should be enough ...
     foreach my $it (1 .. $self->iterations()) {
         $self->logger()->log( message => 'Starting call iteration #'.$it.' for group #'.$group_id, level => 'debug', );
@@ -71,11 +72,11 @@ sub _prepare_message_and_send {
             my $result = $self->_send_with_best_transport($number,$message); # "send" may be misleading here
             # since we subclass "SendingCommand" it should at least make some sense.
             # "SendingCommand" means anything the places a call or sends a text message
-            
+
             # this call was not successfull, try next one in queue
             # defined coz' the DMTF value may be 0 ...
             next unless defined($result);
-            
+
             # the callee pressed 3, so calls to this group will be paused for 30 minutes
             if($result == 3) {
                 my $sql = 'INSERT INTO paused_groups (group_id,until) VALUES(?,?)';
@@ -91,9 +92,9 @@ sub _prepare_message_and_send {
             }
         }
     }
-    
+
     $self->logger()->log( message => 'All iterations failed.', level => 'debug', );
-    
+
     return;
 }
 
@@ -102,10 +103,10 @@ sub _cleanup {
     my $success = shift;
     my $group_id = shift;
     my $msg_ref = shift;
-    
+
     # this method does nothing if the call cycle failed
     return unless $success;
-    
+
     # prepare stmt to delete processed msg from queue
     # will be executed below once the message has been sent successfully
     my $sql = 'DELETE FROM msg_queue WHERE group_id = ? AND type = ?';
@@ -114,7 +115,7 @@ sub _cleanup {
         $self->logger()->log( message => 'Could not prepare SQL '.$sql.' due to error: '.$self->dbh()->errstr, level => 'warning', );
         return;
     }
-    
+
     # if the message was sent successfully we delete all queued messages for this group
     # anything that was inserted after this script has fetched it's initial workload
     # will be deleted, too. Since this code shall only be executed
@@ -123,7 +124,7 @@ sub _cleanup {
         $self->logger()->log( message => 'Could not delete queued messages for group '.$group_id.' w/ error: '.$sth_del->errstr, level => 'warning', );
     }
     $sth_del->finish();
-    
+
     return 1;
 }
 
@@ -144,7 +145,7 @@ __END__
 
 =head1 NAME
 
-Monitoring::Spooler::App::Phone - Some class ...
+Monitoring::Spooler::App::Phone - the voice transport
 
 =method _cleanup
 

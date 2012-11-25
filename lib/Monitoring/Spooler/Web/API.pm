@@ -35,9 +35,9 @@ has 'json' => (
 # initializers ...
 sub _init_json {
     my $self = shift;
-    
+
     my $JSON = JSON::->new()->utf8();
-    
+
     return $JSON;
 }
 
@@ -49,9 +49,9 @@ sub _init_fields {
 sub _handle_request {
     my $self = shift;
     my $request = shift;
-    
+
     my $mode = $request->{'mode'} || 'update_queue';
-    
+
     if($mode eq 'update_queue') {
         # set the new notification/escalation queue
         if($self->_handle_update_queue($request)) {
@@ -69,25 +69,25 @@ sub _handle_request {
     } else {
         return [ 400, ['Content-Type', 'text/plain'], ['Bad Request']];
     }
-    
+
     return 1;
 }
 
 sub _handle_send_text {
     my $self = shift;
     my $request = shift;
-    
+
     # This is just an convenience method for sending text messages
     # through the spooler. Uncommon but you should never stop
     # people from doing it the wrong way ... 'uhm wait, did I get that right? ;)
-    
+
     my $group_id = $request->{'group_id'};
     my $message = $request->{'message'};
 
-    return unless $group_id && $message;    
-    
+    return unless $group_id && $message;
+
     $message = URI::Escape::uri_unescape($message);
-    
+
     my $sql = "INSERT INTO msg_queue (group_id,type,message) VALUES(?,'text',?)";
     my $sth = $self->dbh()->prepare($sql);
     if(!$sth) {
@@ -99,26 +99,26 @@ sub _handle_send_text {
         return;
     }
     $sth->finish();
-    
+
     return 1;
 }
 
 sub _handle_update_queue {
     my $self = shift;
     my $request = shift;
-    
+
     # This method is the primary purpose of this class:
     # Update the notification queue for a given group
-    
+
     my $group_id = $request->{'group_id'};
     my $queue = $request->{'queue'};
     my $message = $request->{'message'} || 'You are now the primary contact for Zabbix Notifications';
-    
+
     if(!$queue || !$group_id) {
         $self->logger()->log( message => 'Missing queue or group_id. Aborting.', level => 'error', );
         return;
     }
-    
+
     $queue = URI::Escape::uri_unescape($queue);
     my $queue_ref = undef;
     try {
@@ -127,30 +127,30 @@ sub _handle_update_queue {
         $self->logger()->log( message => 'Failed to decode JSON: '.$_, level => 'warning', );
     };
     $queue = undef;
-    
+
     # if json decoding above failed we must exit here, since we've got
     # nothing to write in the DB.
     if(!$queue_ref) {
         $self->logger()->log( message => 'Queue is empty after decoding JSON. Aborting.', level => 'error', );
         return;
     }
-    
+
     my $sql = 'SELECT COUNT(*) FROM groups WHERE id = ?';
     my $sth = $self->dbh()->prepare($sql);
     $sth->execute($group_id);
     my $has_group = $sth->fetchrow_array();
     $sth->finish();
-    
+
     if(!$has_group) {
         # the requested group doesn't exist
         $self->logger()->log( message => 'The requested group does not exist. Aborting.', level => 'error', );
         return;
     }
-    
+
     # before we start to modify the DB, we start a TX so we can
     # rollback later
     $self->dbh()->do('BEGIN TRANSACTION');
-    
+
     # remove the old notification queue for this group
     $sql = 'DELETE FROM notify_order WHERE group_id = ?';
     $sth = $self->dbh()->prepare($sql);
@@ -165,7 +165,7 @@ sub _handle_update_queue {
         return;
     }
     $sth->finish();
-    
+
     # insert each user of the new notification queue into the DB in the order
     # that they were sent to us.
     $sql = 'INSERT INTO notify_order (group_id,name,number) VALUES(?,?,?)';
@@ -175,7 +175,7 @@ sub _handle_update_queue {
         $self->dbh()->do('ROLLBACK');
         return;
     }
-    
+
     foreach my $user (@$queue_ref) {
         if(!$sth->execute($group_id,$user->{'name'},$user->{'cellphone'})) {
             $self->logger()->log( message => 'Failed to execute statement: '.$sth->errstr, level => 'warning', );
@@ -190,7 +190,7 @@ sub _handle_update_queue {
         }
     }
     $sth->finish();
-    
+
     # send a welcome message to our new primary contact.
     # this should be configurable on a per-group base in the db
     $sql = "INSERT INTO msg_queue (group_id,type,message) VALUES(?,'text',?)";
@@ -204,12 +204,12 @@ sub _handle_update_queue {
         return;
     }
     $sth->finish();
-    
+
     # everything ok, make changes durable
     if($self->dbh()->do('COMMIT')) {
         $self->logger()->log( message => 'Successfully update queue for group '.$group_id, level => 'debug', );
     }
-    
+
     return 1;
 }
 
@@ -222,6 +222,6 @@ __END__
 
 =head1 NAME
 
-Monitoring::Spooler::CGI::API - Some class ...
+Monitoring::Spooler::Web::API - the API endpoint implementation
 
 =cut

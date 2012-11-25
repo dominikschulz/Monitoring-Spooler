@@ -11,6 +11,6 @@ use Monitoring::Spooler::Web::API;
 my $Frontend = Monitoring::Spooler::Web::API::->new();
 my $app = sub {
     my $env = shift;
-    
+
     return $Frontend->run($env);
 };
