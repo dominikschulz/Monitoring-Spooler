@@ -27,7 +27,7 @@ has 'dbh' => (
 
 has 'config' => (
     'is'        => 'rw',
-    'isa'       => 'Config::Tree',
+    'isa'       => 'Config::Yak',
     'required'  => 1,
 );
 

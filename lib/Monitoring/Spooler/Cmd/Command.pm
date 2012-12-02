@@ -15,7 +15,7 @@ use namespace::autoclean;
 # use English qw( -no_match_vars );
 # use Try::Tiny;
 use DBI;
-use Config::Tree;
+use Config::Yak;
 use Log::Tree;
 use Monitoring::Spooler::DB;
 
@@ -24,7 +24,7 @@ extends 'MooseX::App::Cmd::Command';
 # has ...
 has '_config' => (
     'is'    => 'rw',
-    'isa'   => 'Config::Tree',
+    'isa'   => 'Config::Yak',
     'lazy'  => 1,
     'builder' => '_init_config',
     'accessor' => 'config',
@@ -61,7 +61,7 @@ sub _init_dbh {
 sub _init_config {
     my $self = shift;
 
-    my $Config = Config::Tree::->new({
+    my $Config = Config::Yak::->new({
         'locations'     => [qw(conf /etc/mon-spooler)],
     });
 
