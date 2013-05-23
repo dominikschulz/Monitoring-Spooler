@@ -87,6 +87,15 @@ Afterwards you'll need to create a new action with an appropriate name, an event
 no escalations, a subject and concise message as well as recovery messages. The "operation" should
 send a message to new appropriate "queue user".
 
+=head2 SETUP WEBINTERFACE
+
+In this optional step you can set up the included webinterface and http API.
+
+CGI and PSGI endpoints are provided. Give the usual usage scenario of this App an
+CGI employment should be fine, but if you run into any performance issues
+w/ the web app you should first try to run it under any PSGI wrapper,
+e.g. Starman.
+
 =head1 CONFIGURATION
 
 <Monitoring>
