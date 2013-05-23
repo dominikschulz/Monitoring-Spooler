@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Cmd::Command::text;
+# ABSTRACT: the text transport
 
 use 5.010_000;
 use mro 'c3';
@@ -25,7 +26,7 @@ sub _prepare_message_and_send {
     my $self = shift;
     my $group_id = shift;
     my $msg_ref = shift;
-    
+
     # the message starts with the number of aggregated text messages
     my $message = scalar(@{$msg_ref->{$group_id}}).' Alarms. ';
     # aggregate messages into one string
@@ -38,7 +39,7 @@ sub _prepare_message_and_send {
     foreach my $msg (@{$msg_ref->{$group_id}}) {
         $message .= $msg->{'msg'}.', ';
     }
-       
+
     # prepare stmt to fetch callee number from db
     # until further notice we just grab the first one from the apt group
     my $sql = 'SELECT number FROM notify_order WHERE group_id = ? ORDER BY id LIMIT 1';
@@ -58,7 +59,7 @@ sub _prepare_message_and_send {
         $self->logger()->log( message => 'No contact number for group #'.$group_id, level => 'warning', );
         return;
     }
-    
+
     if($self->_send_with_best_transport($number,$message)) {
         return 1;
     } else {
@@ -71,10 +72,10 @@ sub _cleanup {
     my $success = shift;
     my $group_id = shift;
     my $msg_ref = shift;
-    
+
     # this method does nothing if the call cycle failed
     return unless $success;
-    
+
     # prepare stmt to delete processed msg from queue
     # will be executed below once the message has been sent successfully
     my $sql = 'DELETE FROM msg_queue WHERE id = ?';
@@ -83,7 +84,7 @@ sub _cleanup {
         $self->logger()->log( message => 'Could not prepare SQL '.$sql.' due to error: '.$self->dbh()->errstr, level => 'warning', );
         return;
     }
-    
+
     # if the message was sent successfully we delete all sent messages
     # anything that got inserted into the queue after this script fetched
     # its workload from the DB will NOT be deleted and sent in the
@@ -93,9 +94,9 @@ sub _cleanup {
             $self->logger()->log( message => "Failed to delete message from DB w/ error: ".$sth_del->errstr, level => 'error', );
         }
     }
-    
+
     $sth_del->finish();
-    
+
     return 1;
 }
 
@@ -117,11 +118,6 @@ __END__
 =head1 NAME
 
 Monitoring::Spooler::Cmd::Command::Text - The text transport
-
-=head1 SYNOPSIS
-
-    use Monitoring::Spooler::Cmd::Command::Text;
-    my $Mod = Monitoring::Spooler::Cmd::Command::Text::->new();
 
 =head1 DESCRIPTION
 

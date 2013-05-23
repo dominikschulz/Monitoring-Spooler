@@ -15,7 +15,7 @@ use namespace::autoclean;
 # use English qw( -no_match_vars );
 # use Try::Tiny;
 use DBI;
-use Config::Tree;
+use Config::Yak;
 use Log::Tree;
 use Monitoring::Spooler::DB;
 
@@ -24,7 +24,7 @@ extends 'MooseX::App::Cmd::Command';
 # has ...
 has '_config' => (
     'is'    => 'rw',
-    'isa'   => 'Config::Tree',
+    'isa'   => 'Config::Yak',
     'lazy'  => 1,
     'builder' => '_init_config',
     'accessor' => 'config',
@@ -49,30 +49,30 @@ has '_dbh' => (
 # initializers ...
 sub _init_dbh {
     my $self = shift;
-    
+
     my $DBH = Monitoring::Spooler::DB::->new({
-	'config'	=> $self->config(),
-	'logger'	=> $self->logger(),
+        'config'        => $self->config(),
+        'logger'        => $self->logger(),
     });
-    
+
     return $DBH;
 }
 
 sub _init_config {
     my $self = shift;
-    
-    my $Config = Config::Tree::->new({
-	'locations'	=> [qw(conf /etc/mon-spooler)],
+
+    my $Config = Config::Yak::->new({
+        'locations'     => [qw(conf /etc/mon-spooler)],
     });
-    
+
     return $Config;
 }
 
 sub _init_logger {
     my $self = shift;
-    
+
     my $Logger = Log::Tree::->new('mon-spooler');
-    
+
     return $Logger;
 }
 
@@ -88,18 +88,5 @@ __END__
 =head1 NAME
 
 Monitoring::Spooler::Cmd::Command - Base class for any command.
-
-=head1 SYNOPSIS
-
-    use Monitoring::Spooler::App;
-    my $Mod = Monitoring::Spooler::App::->new();
-
-=head1 DESCRIPTION
-
-Some description.
-
-=method _check_tables
-
-Create all necessary tables if they don't already exist.
 
 =cut

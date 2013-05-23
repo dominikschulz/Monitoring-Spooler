@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Cmd;
+# ABSTRACT: CLI for Monitoring::Spooler
 
 use 5.010_000;
 use mro 'c3';
@@ -31,7 +32,7 @@ __END__
 
 =head1 NAME
 
-Monitoring::Spooler::Cmd - Command base class.
+Monitoring::Spooler::Cmd - CLI class.
 
 =head1 SYNOPSIS
 
@@ -40,7 +41,7 @@ Monitoring::Spooler::Cmd - Command base class.
 
 =head1 DESCRIPTION
 
-This class is the base class for any command implemented by its subclasses.
+This class is the CLI for Monitoring::Spooler.
 
 It is a mere requirement by App::Cmd. Don't mess with it.
 

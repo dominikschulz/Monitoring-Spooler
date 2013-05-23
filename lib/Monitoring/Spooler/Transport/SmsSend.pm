@@ -41,16 +41,16 @@ has 'privargs' => (
 # initializers ...
 sub _init_sender {
     my $self = shift;
-    
+
     my $Sender = SMS::Send::->new($self->driver(), %{$self->privargs()},);
-    
+
     return $Sender;
 }
 
 around BUILDARGS => sub {
     my $orig  = shift;
     my $class = shift;
- 
+
     if ( @_ == 1 && ref $_[0] ) {
         # move private SMS::Send args to privargs hash ...
         my $privargs = {};
@@ -73,11 +73,11 @@ around BUILDARGS => sub {
 sub provides {
     my $self = shift;
     my $type = shift;
-    
+
     if($type =~ m/^text$/i) {
         return 1;
     }
-    
+
     return;
 }
 
@@ -85,14 +85,14 @@ sub run {
     my $self = shift;
     my $destination = shift;
     my $message = shift;
-    
+
     $message = substr($message,0,159);
-    
+
     my $result = $self->_sender->send_sms(
         text => $message,
         to   => $destination,
     );
-    
+
     if($result) {
         $self->logger()->log( message => 'Sent '.$message.' to '.$destination, level => 'debug', );
         return 1;

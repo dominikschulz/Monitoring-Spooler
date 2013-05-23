@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Cmd::Command::list;
+# ABSTRACT: list all queued notifications
 
 use 5.010_000;
 use mro 'c3';
@@ -39,7 +40,7 @@ has 'group_id' => (
 # your code here ...
 sub execute {
     my $self = shift;
-    
+
     # just print the queue content if invoked w/o options
     # we may also print all tables if the user asks for them
     my $sql = 'SELECT id, group_id, type, message, ts FROM msg_queue';
@@ -51,7 +52,7 @@ sub execute {
     $sql .= ' ORDER BY id';
     my $sth = $self->dbh()->prepare($sql);
     $sth->execute(@args);
-    
+
     my $msg_ref = {};
     while(my ($id, $group_id, $type, $message) = $sth->fetchrow_array()) {
         push(@{$msg_ref->{$group_id}}, {
@@ -62,7 +63,7 @@ sub execute {
         });
     }
     $sth->finish();
-    
+
     if(scalar(keys %$msg_ref)) {
         foreach my $group_id (sort keys %$msg_ref) {
             print "Messages waiting in Queue for Group ".$group_id."\n";
@@ -73,7 +74,7 @@ sub execute {
     } else {
         print "Queue is empty\n";
     }
-    
+
     if($self->all()) {
         my $sql = 'SELECT id, name FROM groups ORDER BY name';
         my $sth = $self->dbh()->prepare($sql);
@@ -82,7 +83,7 @@ sub execute {
             printf("%s (%i)\n", $name, $id);
         }
         $sth->finish();
-        
+
         $sql = 'SELECT group_id, until FROM paused_groups ORDER BY group_id';
         $sth = $self->dbh()->prepare($sql);
         $sth->execute();
@@ -90,7 +91,7 @@ sub execute {
             printf("%i => %s\n", $id, localtime($until));
         }
         $sth->finish();
-        
+
         $sql = 'SELECT group_id,type,notify_from,notify_to FROM notify_interval ORDER BY group_id';
         $sth = $self->dbh()->prepare($sql);
         $sth->execute();
@@ -99,7 +100,7 @@ sub execute {
         }
         $sth->finish();
     }
-    
+
     return 1;
 }
 

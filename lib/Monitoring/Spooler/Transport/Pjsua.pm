@@ -67,11 +67,11 @@ has 'sipdest' => (
 sub provides {
     my $self = shift;
     my $type = shift;
-    
+
     if($type =~ m/^phone/i) {
         return 1;
     }
-    
+
     return;
 }
 
@@ -79,9 +79,9 @@ sub run {
     my $self = shift;
     my $number = shift;
     my $voicefile = shift;
-    
+
     # use IPC::open2 or open3 (or even just open ...) and hand-crafted eval-timeouts in favor of Expect
-    
+
     # run pjsua, call number, play voicefile, record DTMF
     # return (nothing) on error or no DTMF data
     # return value of DTMF on success: return wantarray ? (key1, key2, ...) : key1;
@@ -94,22 +94,22 @@ sub run {
     $pjsua_cmd .= ' --log-file /var/log/mon-spooler/pjsua_logs/log-'.$number.'pjsua_out_'.time();
     $pjsua_cmd .= ' sip:'.$number.'@'.$self->sipdest();
     $pjsua_cmd .= ' 2>/tmp/pj.error';
-    
+
     my ($child_in, $child_out);
     my $pid = open2($child_out, $child_in, $pjsua_cmd);
-    
+
     if($pid) {
         if($self->_wait_for($child_out,qr/Got answer/i,90)) {
             my $match_re = qr/Incoming DTMF on call 0: (\d+)/i;
             my $dtmf = $self->_wait_for($child_out,$match_re,90);
             if($dtmf && $dtmf =~ m/$match_re/) {
                 my $dmtf_digit = $1;
-                
+
                 print $child_in "h\n"; # send hangup command
                 sleep 2;
                 print $child_in "q\n"; # quit pjsua
                 sleep 2;
-                
+
                 close($child_out);
                 close($child_in);
                 unlink($config_file);
@@ -120,13 +120,13 @@ sub run {
         close($child_out);
         close($child_in);
     }
-    
+
     return;
 }
 
 sub _write_config {
     my $self = shift;
-    
+
     my ($fh, $filename) = File::Temp::tempfile();
     print $fh '--id '.$self->sipid()."\n";
     print $fh '--registrar '.$self->registrar()."\n";
@@ -137,16 +137,16 @@ sub _write_config {
     print $fh '--stun-srv '.$self->stunsrv()."\n";
     print $fh '--null-audio'."\n";
     close($fh);
-    
+
     return $filename;
-} 
+}
 
 sub _wait_for {
     my $self = shift;
     my $fh = shift;
     my $re = shift;
-    my $timeout = shift;    
-    
+    my $timeout = shift;
+
     my $subject;
     my $prev_timeout;
     my $eval_status = eval {

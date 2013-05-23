@@ -23,11 +23,11 @@ use URI::Escape;
 extends 'Monitoring::Spooler::Cmd::Command';
 # has ...
 has '_finder' => (
-    'is'	=> 'rw',
-    'isa'	=> 'Module::Pluggable::Object',
-    'lazy'	=> 1,
-    'builder'	=> '_init_finder',
-    'accessor'	=> 'finder',
+    'is'        => 'rw',
+    'isa'       => 'Module::Pluggable::Object',
+    'lazy'      => 1,
+    'builder'   => '_init_finder',
+    'accessor'  => 'finder',
 );
 
 has '_transports' => (
@@ -64,7 +64,7 @@ has '_ua' => (
 # initializers ...
 sub _init_pid {
     my $self = shift;
-    
+
     # Why is _init_pid here and not in our superclass (Command)?
     # Well, because the 'other' commands may very well run in parallel.
     # Since they only interact w/ the DB and SQLite should handle
@@ -73,39 +73,39 @@ sub _init_pid {
     # of a single point of access (like, say sqlite) or ACID
     # transactions we need to make sur only one proc of a given type runs at
     # a time.
-    
+
     # first we clean up any pids which aren't valid anymore ...
     $self->_clean_procs();
-    
+
     # bail out if there is another one of our type running
     my $sql = 'SELECT COUNT(*) FROM running_procs WHERE type = ? AND name = ?';
     my $sth = $self->dbh()->prepare($sql);
     $sth->execute($self->_media_type(),$0);
     my $count = $sth->fetchrow_array();
-    
+
     die("Already running!") if $count > 0;
-    
+
     my $pid = $$;
-    
+
     $sql = 'INSERT INTO running_procs (pid,type,name) VALUES(?,?,?)';
     $sth = $self->dbh()->prepare($sql);
     $sth->execute($pid,$self->_media_type(),$0);
-    
+
     return $pid;
 }
 
 sub _init_finder {
     my $self = shift;
-    
+
     # The finder is the class that finds our available Transports (pronounce: Plugins)
     my $Finder = Module::Pluggable::Object::->new('search_path' => 'Monitoring::Spooler::Transport');
-    
+
     return $Finder;
 }
 
 sub _init_fallback_url {
     my $self = shift;
-    
+
     return $self->config()->get('Monitoring::Spooler::FallbackUrl', { Default => '' });
 }
 
@@ -120,14 +120,14 @@ sub _init_ua {
 
 sub _init_transports {
     my $self = shift;
-    
+
     # Allow the transports to be sorted by prio in the config with the Priority
     # key in each transport section. Why priorities? They allow us to load
     # multiple transports for each media type and try each one in a well defined
     # (as long as you don't use any single priority twice) order.
     # If one fails mysteriously we can just go on to the next. Nice, eh'?
     my $order_ref = {};
-    
+
     foreach my $plugin_name ($self->finder()->plugins()) {
         ## no critic (ProhibitStringyEval)
         my $eval_status = eval "require $plugin_name;";
@@ -159,16 +159,16 @@ sub _init_transports {
             $self->logger()->log( message => 'Failed to initialize plugin '.$plugin_name.' w/ error: '.$_, level => 'warning', );
         };
     }
-    
+
     my @transports = ();
-    
+
     # this basically merges the pre-sorted sub-arrays (which, if you follow
     # my advice, should each contain only one element ... but we must
     # plan for the unexptected, of course)
     foreach my $prio (sort keys %$order_ref) {
         push(@transports,@{$order_ref->{$prio}});
     }
-    
+
     # call fallback url if there aren't any working transports
     if(scalar(@transports) < 1 && $self->fallback_url()) {
         $self->_fallback_notify('Failed to initialize at least one transport');
@@ -179,25 +179,25 @@ sub _init_transports {
 
 sub BUILD {
     my $self = shift;
-    
+
     # just make sure our pid is in the pid list
     # a build is nice and handy by itself
     # but only BUILD will be called ALL THE WAY UP by Moose
     # on instantiation. This is usually not what you want but
     # here it should be perfect.
     $self->pid();
-    
+
     return 1;
 }
 
 sub DEMOLISH {
     my $self = shift;
-    
+
     # this should remove this procs pid from the pid list
     my $sql = 'DELETE FROM running_procs WHERE pid = ?';
     my $sth = $self->dbh()->prepare($sql);
     $sth->execute($self->pid());
-    
+
     return;
 }
 
@@ -205,17 +205,17 @@ sub DEMOLISH {
 sub _fallback_notify {
     my $self = shift;
     my $message = shift;
-    
-    $message = 'Internal Zabbix Spooler error' unless $message;
-        
+
+    $message = 'Internal Monitoring::Spooler error' unless $message;
+
     if(!$self->fallback_url()) {
         $self->logger()->log( message => 'No fallback url defined. Can not send message: '.$message, level => 'error', );
         return;
     }
-    
+
     my $req = HTTP::Request::->new( GET => $self->fallback_url().uri_escape($message), );
     my $res = $self->_ua()->request($req);
-    
+
     if($res->is_success()) {
         $self->logger()->log( message => 'Sent '.$message, level => 'debug', );
         return 1;
@@ -231,12 +231,12 @@ sub _fallback_notify {
 
 sub _clean_procs {
     my $self = shift;
-    
+
     # this is an ugly method that removes any orphaned pids from the
     # pid list. this is annoying and expensive but we just can not rely
     # on DEMOLISH above to work properly always. Experience show
     # that it _will_ fail (at least if we don't use a method like this one).
-    
+
     my $PT = Proc::ProcessTable::->new();
     my $procs = {};
     foreach my $proc (@{$PT->table()}) {
@@ -256,13 +256,13 @@ sub _clean_procs {
     }
     $sth_del->finish();
     $sth->finish();
-    
+
     return 1;
 }
 
 sub _fetch_waiting_messages {
     my $self = shift;
-    
+
     # get messages waiting in queue
     my $sql = 'SELECT id,group_id,message,ts,event,trigger_id FROM msg_queue WHERE type = ?';
     my $sth = $self->dbh()->prepare($sql);
@@ -288,16 +288,16 @@ sub _fetch_waiting_messages {
         });
     }
     $sth->finish();
-    
+
     return $msg_ref;
 }
 
 sub execute {
     my $self = shift;
-    
+
     # get messages waiting in queue
     my $msg_ref = $self->_fetch_waiting_messages();
-    
+
     # prepare stmt to fetch notifcation interval for this group from db
     my $sql = "SELECT notify_from,notify_to FROM notify_interval WHERE group_id = ? AND type = ?";
     my $sth_ni = $self->dbh()->prepare($sql);
@@ -305,9 +305,9 @@ sub execute {
         $self->logger()->log( message => 'Could not prepare SQL '.$sql.' due to error: '.$self->dbh()->errstr, level => 'warning', );
         return;
     }
-    
+
     my $msgs_sent = 0;
-    
+
     # process each group
     foreach my $group_id (keys %$msg_ref) {
 
@@ -315,7 +315,7 @@ sub execute {
         # shouldn't happen but what does Postel's law teach us? Right:
         # Be conservative in what you send but liberal in what you accept!
         next unless scalar(@{$msg_ref->{$group_id}});
-        
+
         # skip this group if we're not inside the valid notification interval
         if(!$sth_ni->execute($group_id,$self->_media_type())) {
             $self->logger()->log( message => 'Could not execute statement: '.$sth_ni->errstr, level => 'warning', );
@@ -334,28 +334,28 @@ sub execute {
             $self->logger()->log( message => 'Not within valid notification interval for group '.$group_id.' - from: '.$notify_from.' - to: '.$notify_to.' - now: '.$nowstr, level => 'notice', );
             next;
         }
-        
+
         # send the message
         if($self->_prepare_message_and_send($group_id, $msg_ref)) {
             # if everything went fine we'll clean up
-	    $self->_cleanup(1,$group_id,$msg_ref);
+            $self->_cleanup(1,$group_id,$msg_ref);
         } else {
             # the current implementation of _cleanup does nothing
             # on failure, but maybe future media-types will need to, so
             # we'll call it with the apt. flag anyway
             $self->_cleanup(0,$group_id,$msg_ref);
             $self->logger()->log( message => 'Failed to process messages for group #'.$group_id, level => 'error', );
-	    if($self->fallback_url()) {
-		$self->_fallback_notify('Failed to send messages to group: '.$group_id);
-	    }
+            if($self->fallback_url()) {
+                $self->_fallback_notify('Failed to send messages to group: '.$group_id);
+            }
         }
     }
-    
+
     # delete expired pause entries
     $sql = 'DELETE FROM paused_groups WHERE until < ?';
     my $sth = $self->dbh()->prepexec($sql,time()); # no error handling, this is not essential
     $sth->finish();
-    
+
     return 1;
 }
 
@@ -363,7 +363,7 @@ sub _send_with_best_transport {
     my $self = shift;
     my $number = shift;
     my $message = shift;
-    
+
     # try each defined transport until one suceeds
     foreach my $transport (@{$self->transports()}) {
         $self->logger()->log( message => 'Trying to send using transport '.ref($transport), level => 'debug', );
@@ -384,7 +384,7 @@ sub _send_with_best_transport {
             $self->logger()->log( message => 'Failed to send w/ transport '.ref($transport).', trying next one ...', level => 'notice', );
         }
     }
-    
+
     return;
 }
 

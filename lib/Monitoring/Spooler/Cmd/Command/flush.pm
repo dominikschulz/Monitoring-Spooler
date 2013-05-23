@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Cmd::Command::flush;
+# ABSTRACT: remove all pending notifications
 
 use 5.010_000;
 use mro 'c3';
@@ -57,7 +58,7 @@ sub execute {
         $self->logger()->log( message => 'Failed to execute statement: '.$sth->errstr, level => 'warning', );
     }
     $sth->finish();
-    
+
     if($self->all()) {
         my $sql = 'DELETE FROM paused_groups';
         my $sth = $self->dbh()->prepare($sql);
@@ -84,7 +85,7 @@ sub execute {
             $self->logger()->log( message => 'Failed to prepare statement ('.$sql.'): '.$self->dbh()->errstr, level => 'warning', );
         }
     }
-    
+
     return 1;
 }
 

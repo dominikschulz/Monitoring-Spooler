@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Cmd::Command::create;
+# ABSTRACT: enqueue a new notification
 
 use 5.010_000;
 use mro 'c3';
@@ -49,12 +50,12 @@ has 'message' => (
 # your code here ...
 sub execute {
     my $self = shift;
-    
+
     my $message = $self->message();
-    
+
     my $trigger_id = 0;
     my $event = '';
-    
+
     # Handle negating triggers
     if($self->type() eq 'text'
        && $self->config()->get('Monitoring::Spooler::NegatingTrigger')
@@ -65,7 +66,7 @@ sub execute {
         $message =~ s/^\s*\d+\s+//g;
         # remove any trailing spaces
         $message =~ s/\s+$//;
-        
+
         # if we got an trigger id and this is a recovery message
         # we look for any related down trigger and delete it
         if($event =~ m/^(?:OK|UP)$/ && $trigger_id) {
@@ -77,19 +78,19 @@ sub execute {
             }
         }
     }
-    
+
     # Do not insert new messages into queue for paused groups
     if($self->type() eq 'phone') {
         my $sql = 'SELECT COUNT(*) FROM paused_groups WHERE until > ? AND group_id = ?';
         my $sth = $self->dbh()->prepexec($sql,time(),$self->group_id());
         my $count = $sth->fetchrow_array();
-        
+
         if($count > 0) {
             $self->logger()->log( message => 'Rejected new message "'.$self->message().'" to paused group', level => 'debug', );
             return 1;
         }
     }
-    
+
     # create new message in queue
     my $sql = 'INSERT INTO msg_queue (group_id,type,message,ts,event,trigger_id) VALUES(?,?,?,?,?,?)';
     my $sth = $self->dbh()->prepare($sql);

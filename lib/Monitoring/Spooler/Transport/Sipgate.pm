@@ -58,9 +58,9 @@ has 'responses' => (
 # initializers ...
 sub _init_url {
     my $self = shift;
-    
+
     my $url = 'https://'.$self->username().':'.$self->password().'@samurai.sipgate.net/RPC2';
-    
+
     return $url;
 }
 
@@ -80,7 +80,7 @@ sub _init_client {
     if ( $Client->transport()->can('ssl_opts') ) {
         $Client->transport()->ssl_opts( verify_hostname => 0, );
     }
-    
+
     my $resp = $Client->call(
         'samurai.ClientIdenfity',
         {
@@ -96,7 +96,7 @@ sub _init_client {
 
 sub _init_responses {
     my $self = shift;
-    
+
     # see http://www.sipgate.de/beta/public/static/downloads/basic/api/sipgate_api_documentation.pdf, page 30ff.
     my $resp_ref = {
         '200'   => 'Method success',
@@ -145,7 +145,7 @@ sub _init_responses {
     for my $i (900 .. 999) {
         $resp_ref->{$i} = 'Vendor defined status code';
     }
-    
+
     return $resp_ref;
 }
 
@@ -153,11 +153,11 @@ sub _init_responses {
 sub provides {
     my $self = shift;
     my $type = shift;
-    
+
     if($type =~ m/^text$/i) {
         return 1;
     }
-    
+
     return;
 }
 
@@ -165,10 +165,10 @@ sub run {
     my $self = shift;
     my $destination = shift;
     my $message = shift;
-    
+
     $destination = $self->_clean_number($destination);
     $message = substr($message,0,159);
-    
+
     my $resp = $self->client()->call(
         'samurai.SessionInitiate',
         {
@@ -178,7 +178,7 @@ sub run {
         }
     );
     my $result = $resp->result();
-    
+
     if($result && $result->{'StatusCode'} == 200) {
         $self->logger()->log( message => 'Sent '.$message.' to '.$destination, level => 'debug', );
         return 1;

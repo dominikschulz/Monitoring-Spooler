@@ -15,6 +15,7 @@ use namespace::autoclean;
 # use English qw( -no_match_vars );
 # use Try::Tiny;
 use Template;
+use File::ShareDir;
 
 # extends ...
 extends 'Monitoring::Spooler::Web';
@@ -30,8 +31,18 @@ has 'tt' => (
 sub _init_tt {
     my $self = shift;
 
+    my $dist_dir = File::ShareDir::dist_dir('Monitoring-Spooler');
+    my @inc = ( 'share/tpl', '../share/tpl', );
+    if(-d $dist_dir) {
+        push(@inc, $dist_dir.'/tpl');
+    }
+    my $cfg_dir = $self->config()->get('Monitoring::Spooler::Frontend::TemplatePath');
+    if(-d $cfg_dir) {
+        unshift(@inc,$cfg_dir);
+    }
+
     my $tpl_config = {
-        INCLUDE_PATH => [ 'tpl/', $self->config()->get('Monitoring::Spooler::Frontend::TemplatePath'), ],
+        INCLUDE_PATH => [ @inc, ],
         POST_CHOMP   => 1,
         FILTERS      => {
             'substr'   => [
@@ -65,9 +76,9 @@ sub _init_fields {
 sub _handle_request {
     my $self = shift;
     my $request = shift;
-    
+
     my $mode = $request->{'rm'};
-    
+
     if(!$mode || $mode eq 'overview') {
         return $self->_handle_overview($request);
     } elsif($mode eq 'add_message') {
@@ -84,7 +95,7 @@ sub _handle_request {
 sub _handle_overview {
     my $self = shift;
     my $request = shift;
-    
+
     my %groups = ();
     my $sql = 'SELECT id,name FROM groups ORDER BY name';
     my $sth = $self->dbh()->prepare($sql);
@@ -102,7 +113,7 @@ sub _handle_overview {
         $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
-    
+
     $sql = 'SELECT id,group_id,type,message,ts,event,trigger_id FROM msg_queue ORDER BY id';
     $sth = $self->dbh()->prepare($sql);
     if($sth) {
@@ -126,7 +137,7 @@ sub _handle_overview {
         $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
-    
+
     $sql = 'SELECT id,group_id,name,number FROM notify_order ORDER BY id';
     $sth = $self->dbh()->prepare($sql);
     if($sth) {
@@ -147,7 +158,7 @@ sub _handle_overview {
         $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
-    
+
     $sql = 'SELECT id,group_id,until FROM paused_groups';
     $sth = $self->dbh()->prepare($sql);
     if($sth) {
@@ -166,7 +177,7 @@ sub _handle_overview {
         $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
-    
+
     my @running_procs = ();
     $sql = 'SELECT pid,type,name FROM running_procs';
     $sth = $self->dbh()->prepare($sql);
@@ -188,7 +199,7 @@ sub _handle_overview {
         $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
-    
+
     $sql = 'SELECT id,group_id,type,notify_from,notify_to FROM notify_interval ORDER BY id';
     $sth = $self->dbh()->prepare($sql);
     if($sth) {
@@ -210,7 +221,7 @@ sub _handle_overview {
         $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
-    
+
     my $body;
     $self->tt()->process(
         'overview.tpl',
@@ -220,48 +231,48 @@ sub _handle_overview {
         },
         \$body,
     ) or $self->logger()->log( message => 'TT error: '.$self->tt()->error, level => 'warning', );
-    
+
     return [ 200, [ 'Content-Type', 'text/html' ], [$body]];
 }
 
 sub _handle_add_message {
     my $self = shift;
     my $request = shift;
-    
+
     my $group_id = $request->{'group_id'};
     my $message  = $request->{'message'};
     my $type     = $request->{'type'} || 'text';
-    
+
     if($group_id && $message) {
         my $sql = 'INSERT INTO msg_queue (group_id,type,message,ts,event,trigger_id) VALUES(?,?,?,?,?,?)';
         my $sth = $self->dbh()->prepexec($group_id,$type,$message,time(),'',0);
         $sth->finish() if $sth;
     }
-    
+
     return [ 301, [ 'Location', '?rm=overview' ], [] ];
 }
 
 sub _handle_rm_message {
     my $self = shift;
     my $request = shift;
-    
+
     my $message_id = $request->{'msg_id'};
-    
+
     if($message_id) {
         my $sql = 'DELETE FROM msg_queue WHERE id = ?';
         my $sth = $self->dbh()->prepexec($sql,$message_id);
         $sth->finish() if $sth;
     }
-    
+
     return [ 301, [ 'Location', '?rm=overview' ], [] ];
 }
 
 sub _handle_flush_messages {
     my $self = shift;
     my $request = shift;
-    
+
     my $group_id = $request->{'group_id'} || 0;
-    
+
     my $sql = 'DELETE FROM msg_queue';
     my @args = ();
     if($group_id) {
@@ -270,7 +281,7 @@ sub _handle_flush_messages {
     }
     my $sth = $self->dbh()->prepexec($sql,@args);
     $sth->finish() if $sth;
-    
+
     return [ 301, [ 'Location', '?rm=overview' ], [] ];
 }
 # TODO allow mgmt of groups
@@ -285,7 +296,7 @@ __END__
 
 =head1 NAME
 
-Monitoring::Spooler::CGI::Frontend - Some class ...
+Monitoring::Spooler::Web::Frontend - the web frontend implementation
 
 =cut
 

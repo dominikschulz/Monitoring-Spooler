@@ -1,4 +1,5 @@
 package Monitoring::Spooler::Transport;
+# ABSTRACT: baseclass for any transport plugin
 
 use 5.010_000;
 use mro 'c3';
@@ -33,14 +34,16 @@ sub run {
 sub _clean_number {
     my $self = shift;
     my $number = shift;
-    
+
     # strip all non-number chars
     $number =~ s/\D//g;
+
+    # TODO i18n/l10n
     # make sure to use the country prefix for germany
     $number =~ s/^01/491/;
     # never prefix country with 00
     $number =~ s/^00491/491/;
-    
+
     return $number;
 }
 
