@@ -14,8 +14,6 @@ use namespace::autoclean;
 # use English qw( -no_match_vars );
 # use Try::Tiny;
 
-our $VERSION = '@VERSION@';
-
 # extends ...
 extends 'MooseX::App::Cmd';
 # has ...
@@ -47,3 +45,4 @@ This class is the base class for any command implemented by its subclasses.
 It is a mere requirement by App::Cmd. Don't mess with it.
 
 =cut
+

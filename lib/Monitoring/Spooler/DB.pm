@@ -15,8 +15,6 @@ use namespace::autoclean;
 # use Try::Tiny;
 use DBI;
 
-our $VERSION = '@VERSION@';
-
 # extends ...
 # has ...
 has 'dbh' => (
@@ -78,14 +76,14 @@ sub prepexec {
     my $sth = $self->dbh()->prepare($sqlstr);
     
     if(!$sth) {
-	$self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sqlstr.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
-	return;
+      $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sqlstr.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
+      return;
     }
     if($sth->execute(@params)) {
-	return $sth;
+      return $sth;
     } else {
-	$self->logger()->log( message => 'Failed to execute statement w/ error: '.$sth->errstr, level => 'warning', );
-	return;
+      $self->logger()->log( message => 'Failed to execute statement w/ error: '.$sth->errstr, level => 'warning', );
+      return;
     }
 }
 
@@ -316,3 +314,4 @@ Monitoring::Spooler::Utils::DB - Some class ...
 Some description.
 
 =cut
+

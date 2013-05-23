@@ -288,3 +288,4 @@ __END__
 Monitoring::Spooler::CGI::Frontend - Some class ...
 
 =cut
+

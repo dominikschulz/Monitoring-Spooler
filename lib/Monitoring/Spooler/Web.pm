@@ -180,3 +180,4 @@ Monitoring::Spooler::CGI - Some class ...
 Some description.
 
 =cut
+
