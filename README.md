@@ -9,7 +9,9 @@ handle several groups of on-call personel and provides
 an extensible plugin mechanism to connect it to virtually any
 remote service which provides some kind of API.
 
-It is designed to work nicely with App::Standby.
+Please also look at App::Standby which provides a remote control for
+this and other notification tools and will help you manage
+you notification qeues and on call-rotations easily.
 
 ## Installation
 
@@ -33,4 +35,5 @@ make install
 
 ## Documentation
 
-Please see perldoc Monitoring::Spooler.
+Please see perldoc Monitoring::Spooler. Setup and configuration is covered there.
+
