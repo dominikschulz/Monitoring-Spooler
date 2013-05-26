@@ -83,6 +83,10 @@ sub _handle_request {
 
     if(!$mode || $mode eq 'overview') {
         return $self->_handle_overview($request);
+    } elsif($mode eq 'show_group') {
+        return $self->_handle_show_group($request);
+    } elsif($mode eq 'list_procs') {
+        return $self->_handle_list_procs($request);
     } elsif($mode eq 'add_message') {
         return $self->_handle_add_message($request);
     } elsif($mode eq 'flush_messages') {
@@ -98,13 +102,21 @@ sub _handle_overview {
     my $self = shift;
     my $request = shift;
 
-    my %groups = ();
-    my $sql = 'SELECT id,name FROM groups ORDER BY name';
+   my @msg_queue = ();
+    my $sql = 'SELECT id,group_id,type,message,ts,event,trigger_id FROM msg_queue ORDER BY id';
     my $sth = $self->dbh()->prepare($sql);
     if($sth) {
         if($sth->execute()) {
-            while(my ($id,$name) = $sth->fetchrow_array()) {
-                $groups{$id}->{'name'} = $name;
+            while(my ($id,$group_id,$type,$message,$ts,$event,$trigger_id) = $sth->fetchrow_array()) {
+                push(@msg_queue, {
+                    'id'         => $id,
+                    'type'       => $type,
+                    'message'    => $message,
+                    'ts'         => $ts,
+                    'event'      => $event,
+                    'trigger_id' => $trigger_id,
+                    'group_id'   => $group_id,
+                });
             }
             $sth->finish();
         } else {
@@ -116,17 +128,38 @@ sub _handle_overview {
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
 
-    $sql = 'SELECT id,group_id,type,message,ts,event,trigger_id FROM msg_queue ORDER BY id';
-    $sth = $self->dbh()->prepare($sql);
+    my $body;
+    $self->tt()->process(
+        'overview.tpl',
+        {
+            'msg_queue' => \@msg_queue,
+            'groups'    => $self->_get_groups(),
+        },
+        \$body,
+    ) or $self->logger()->log( message => 'TT error: '.$self->tt()->error, level => 'warning', );
+
+    return [ 200, [ 'Content-Type', 'text/html' ], [$body]];
+}
+
+sub _handle_show_group {
+    my $self = shift;
+    my $request = shift;
+    my $group_id = $request->{'group_id'};
+
+    return [ 403, [ 'Content-Type', 'text/plain'], ['Missing group_id']] until $group_id;
+
+   my @msg_queue = ();
+    my $sql = 'SELECT id,type,message,ts,event,trigger_id FROM msg_queue WHERE group_id = ? ORDER BY id';
+    my $sth = $self->dbh()->prepare($sql);
     if($sth) {
-        if($sth->execute()) {
-            while(my ($id,$group_id,$type,$message,$ts,$event,$trigger_id) = $sth->fetchrow_array()) {
-                push(@{$groups{$group_id}->{'msg_queue'}}, {
-                    'id' => $id,
-                    'type'  => $type,
-                    'message' => $message,
-                    'ts' => $ts,
-                    'event' => $event,
+        if($sth->execute($group_id)) {
+            while(my ($id,$type,$message,$ts,$event,$trigger_id) = $sth->fetchrow_array()) {
+                push(@msg_queue, {
+                    'id'         => $id,
+                    'type'       => $type,
+                    'message'    => $message,
+                    'ts'         => $ts,
+                    'event'      => $event,
                     'trigger_id' => $trigger_id,
                 });
             }
@@ -140,15 +173,16 @@ sub _handle_overview {
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
 
-    $sql = 'SELECT id,group_id,name,number FROM notify_order ORDER BY id';
+   my @notify_order = ();
+    $sql = 'SELECT id,name,number FROM notify_order WHERE group_id = ? ORDER BY id';
     $sth = $self->dbh()->prepare($sql);
     if($sth) {
-        if($sth->execute()) {
-            while(my ($id,$group_id,$name,$number) = $sth->fetchrow_array()) {
-                push(@{$groups{$group_id}->{'notify_queue'}}, {
-                    'id' => $id,
-                    'name'  => $name,
-                    'number' => $number,
+        if($sth->execute($group_id)) {
+            while(my ($id,$name,$number) = $sth->fetchrow_array()) {
+                push(@notify_order, {
+                    'id'      => $id,
+                    'name'    => $name,
+                    'number'  => $number,
                 });
             }
             $sth->finish();
@@ -161,14 +195,34 @@ sub _handle_overview {
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
 
-    $sql = 'SELECT id,group_id,until FROM paused_groups';
+   my $paused_until = 0;
+    $sql = 'SELECT MAX(until) FROM paused_groups WHERE group_id = ?';
     $sth = $self->dbh()->prepare($sql);
     if($sth) {
-        if($sth->execute()) {
-            while(my ($id,$group_id,$until) = $sth->fetchrow_array()) {
-                if(!$groups{$group_id}->{'paused_until'} || ($groups{$group_id}->{'paused_until'} && $groups{$group_id}->{'paused_until'} < $until) ) {
-                    $groups{$group_id}->{'paused_until'} = $until;
-                }
+        if($sth->execute($group_id)) {
+            $paused_until = $sth->fetchrow_array();
+        } else {
+            $self->logger()->log( message => 'Failed to execute statement w/ error: '.$sth->errstr, level => 'warning', );
+            return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
+        }
+        $sth->finish();
+    } else {
+        $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
+        return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
+    }
+
+   my @notify_intervals = ();
+    $sql = 'SELECT id,type,notify_from,notify_to FROM notify_interval WHERE group_id = ? ORDER BY id';
+    $sth = $self->dbh()->prepare($sql);
+    if($sth) {
+        if($sth->execute($group_id)) {
+            while(my ($id,$type,$notify_from,$notify_to) = $sth->fetchrow_array()) {
+                push(@notify_intervals, {
+                    'id'            => $id,
+                    'type'          => $type,
+                    'notify_from'   => $notify_from,
+                    'notify_to'     => $notify_to,
+                });
             }
             $sth->finish();
         } else {
@@ -180,9 +234,28 @@ sub _handle_overview {
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
 
+    my $body;
+    $self->tt()->process(
+        'group.tpl',
+        {
+            'msg_queue'        => \@msg_queue,
+            'paused_until'     => \$paused_until,
+            'notify_order'     => \@notify_order,
+            'notify_intervals' => \@notify_intervals,
+            'groups'           => $self->_get_groups(),
+        },
+        \$body,
+    ) or $self->logger()->log( message => 'TT error: '.$self->tt()->error, level => 'warning', );
+
+    return [ 200, [ 'Content-Type', 'text/html' ], [$body]];
+}
+sub _handle_list_procs {
+    my $self = shift;
+    my $request = shift;
+
     my @running_procs = ();
-    $sql = 'SELECT pid,type,name FROM running_procs';
-    $sth = $self->dbh()->prepare($sql);
+    my $sql = 'SELECT pid,type,name FROM running_procs';
+    my $sth = $self->dbh()->prepare($sql);
     if($sth) {
         if($sth->execute()) {
             while(my ($pid,$type,$name) = $sth->fetchrow_array()) {
@@ -202,41 +275,18 @@ sub _handle_overview {
         return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
     }
 
-    $sql = 'SELECT id,group_id,type,notify_from,notify_to FROM notify_interval ORDER BY id';
-    $sth = $self->dbh()->prepare($sql);
-    if($sth) {
-        if($sth->execute()) {
-            while(my ($id,$group_id,$type,$notify_from,$notify_to) = $sth->fetchrow_array()) {
-                push(@{ $groups{$group_id}->{'notify_intervals'} }, {
-                    'id' => $id,
-                    'type'  => $type,
-                    'notify_from' => $notify_from,
-                    'notify_to' => $notify_to,
-                });
-            }
-            $sth->finish();
-        } else {
-            $self->logger()->log( message => 'Failed to execute statement w/ error: '.$sth->errstr, level => 'warning', );
-            return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
-        }
-    } else {
-        $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
-        return [ 500, [ 'Content-Type', 'text/plain'], ['Internal Server Error']];
-    }
-
     my $body;
     $self->tt()->process(
-        'overview.tpl',
+        'procs.tpl',
         {
-            'groups'         => \%groups,
-            'running_proces' => \@running_procs,
+            'running_proces'  => \@running_procs,
+            'groups'          => $self->_get_groups(),
         },
         \$body,
     ) or $self->logger()->log( message => 'TT error: '.$self->tt()->error, level => 'warning', );
 
     return [ 200, [ 'Content-Type', 'text/html' ], [$body]];
 }
-
 sub _handle_add_message {
     my $self = shift;
     my $request = shift;
@@ -286,6 +336,29 @@ sub _handle_flush_messages {
 
     return [ 301, [ 'Location', '?rm=overview' ], [] ];
 }
+
+sub _get_groups {
+   my $self = shift;
+
+   my %groups = ();
+   my $sql = 'SELECT id,name FROM groups ORDER BY name';
+   my $sth = $self->dbh()->prepare($sql);
+    if($sth) {
+        if($sth->execute()) {
+            while(my ($id,$name) = $sth->fetchrow_array()) {
+               $groups{$id}{'name'} = $name;
+            }
+            $sth->finish();
+        } else {
+            $self->logger()->log( message => 'Failed to execute statement w/ error: '.$sth->errstr, level => 'warning', );
+        }
+    } else {
+        $self->logger()->log( message => 'Failed to prepare statement from SQL: '.$sql.' w/ error: '.$self->dbh()->errstr, level => 'warning', );
+    }
+
+    return \%groups;
+}
+
 # TODO allow mgmt of groups
 # TODO allow mgmt of pauses
 
