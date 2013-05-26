@@ -56,6 +56,8 @@ sub execute {
     my $trigger_id = 0;
     my $event = '';
 
+    return 0 unless $self->type() =~ m/^(?:text|phone)$/i;
+
     # Handle negating triggers
     if($self->type() eq 'text'
        && $self->config()->get('Monitoring::Spooler::NegatingTrigger')

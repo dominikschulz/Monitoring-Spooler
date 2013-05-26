@@ -16,7 +16,7 @@
          <tbody>
          [% FOREACH msg IN msg_queue %]
             <tr>
-               <td>[% msg.group %]</td>
+               <td>[% msg.group_id %]</td>
                <td>[% msg.type %]</td>
                <td>[% msg.ts | localtime %]</td>
                <td>[% msg.message %]</td>
