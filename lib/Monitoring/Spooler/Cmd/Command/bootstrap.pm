@@ -50,7 +50,8 @@ sub execute {
     $sql = 'INSERT INTO groups (name) VALUES (?)';
     $sth = $self->dbh()->prepexec($sql,$self->name());
     if($sth) {
-        print "Created new group '".$self->name()."'\n";
+      my $id = $self->dbh()->last_insert_id(undef, undef, undef, undef);
+        print "Created new group '".$self->name()."' with Id $id\n";
     }
 
     return 1;

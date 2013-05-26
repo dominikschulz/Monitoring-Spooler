@@ -13,7 +13,7 @@ use namespace::autoclean;
 # use MooseX::Params::Validate;
 # use Carp;
 # use English qw( -no_match_vars );
-# use Try::Tiny;
+use Try::Tiny;
 use Template;
 use File::ShareDir;
 
@@ -31,11 +31,13 @@ has 'tt' => (
 sub _init_tt {
     my $self = shift;
 
-    my $dist_dir = File::ShareDir::dist_dir('Monitoring-Spooler');
     my @inc = ( 'share/tpl', '../share/tpl', );
-    if(-d $dist_dir) {
-        push(@inc, $dist_dir.'/tpl');
-    }
+    try {
+      my $dist_dir = File::ShareDir::dist_dir('Monitoring-Spooler');
+      if(-d $dist_dir) {
+          push(@inc, $dist_dir.'/tpl');
+      }
+    };
     my $cfg_dir = $self->config()->get('Monitoring::Spooler::Frontend::TemplatePath');
     if(-d $cfg_dir) {
         unshift(@inc,$cfg_dir);
