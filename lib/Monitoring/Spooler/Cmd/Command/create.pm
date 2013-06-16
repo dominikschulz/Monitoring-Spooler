@@ -134,4 +134,10 @@ This command is usually invoked by your Monitoring (as a media transport) or som
 other noficiation script. All the boilerplate work is done by
 MooseX::App::Cmd.
 
+=head1 SETUP
+
+In order for negating triggers to work you need to use a certain message
+template: {TRIGGER.ID} {TRIGGER.STATUS} {TRIGGER.NAME}
+
 =cut
+
