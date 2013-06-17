@@ -61,7 +61,7 @@ sub execute {
     # Handle negating triggers
     if($self->type() eq 'text'
        && $self->config()->get('Monitoring::Spooler::NegatingTrigger')
-       && $message =~ m/^\s*(\d+)\s+(OK|UP|DOWN)\s/) {
+       && $message =~ m/^\s*(\d+)\s+(OK|UP|DOWN|PROBLEM)\s/) {
         $trigger_id = $1;
         $event = $2;
         # remove the leading trigger id
