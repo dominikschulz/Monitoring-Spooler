@@ -132,6 +132,9 @@ sub _filter_params {
     # add the remote_addr
     $request_ref->{'remote_addr'} = $request->address();
 
+    # add the path
+    $request_ref->{'path'} = $request->path_info;
+
     return $request_ref;
 }
 

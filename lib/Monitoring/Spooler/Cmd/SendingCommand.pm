@@ -142,6 +142,7 @@ sub _init_transports {
         $arg_ref->{'dbh'}    = $self->dbh();
         if($arg_ref->{'disabled'}) {
             $self->logger()->log( message => 'Skipping disabled transport: '.$plugin_name, level => 'debug', );
+            next;
         }
         try {
             my $Transport = $plugin_name->new($arg_ref);

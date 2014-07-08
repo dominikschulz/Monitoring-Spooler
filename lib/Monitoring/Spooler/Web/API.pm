@@ -112,7 +112,7 @@ sub _handle_update_queue {
 
     my $group_id = $request->{'group_id'};
     my $queue = $request->{'queue'};
-    my $message = $request->{'message'} || 'You are now the primary contact for Zabbix Notifications';
+    my $message = $request->{'message'} || 'You are now the primary contact for Monitoring Notifications';
 
     if(!$queue || !$group_id) {
         $self->logger()->log( message => 'Missing queue or group_id. Aborting.', level => 'error', );
