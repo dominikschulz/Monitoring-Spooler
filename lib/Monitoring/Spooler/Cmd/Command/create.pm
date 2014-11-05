@@ -36,6 +36,15 @@ has 'type' => (
     'documentation' => 'Message is of this type (text or phone)',
 );
 
+has 'force' => (
+    'is'    => 'ro',
+    'isa'   => 'Bool',
+    'default' => 0,
+    'traits'  => [qw(Getopt)],
+    'cmd_aliases' => 'f',
+    'documentation' => 'Force message enqueing',
+);
+
 has 'message' => (
     'is'    => 'ro',
     'isa'   => 'Str',
@@ -87,7 +96,7 @@ sub execute {
         my $sth = $self->dbh()->prepexec($sql,time(),$self->group_id());
         my $count = $sth->fetchrow_array();
 
-        if($count > 0) {
+        if(!$self->force() && $count > 0) {
             $self->logger()->log( message => 'Rejected new message "'.$self->message().'" to paused group', level => 'debug', );
             return 1;
         }
